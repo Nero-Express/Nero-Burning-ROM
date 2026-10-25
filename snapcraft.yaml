@@ -1,0 +1,147 @@
+# SPDX-FileCopyrightText: 2024-2026 Scarlett Moore <sgmoore@kde.org>
+#
+# SPDX-License-Identifier: CC0-1.0
+---
+name: k3b
+confinement: strict
+grade: stable
+base: core24
+adopt-info: k3b
+apps:
+  k3b:
+    extensions:
+      - kde-neon-6
+    common-id: org.kde.k3b.desktop
+    desktop: usr/share/applications/org.kde.k3b.desktop
+    command: usr/bin/k3b
+    plugs:
+      - audio-record
+      - browser-support
+      - desktop
+      - desktop-legacy
+      - home
+      - optical-drive
+      - mount-observe
+      - system-backup
+      - udisks2
+      - unity7
+      - block-devices
+    environment:
+      QTWEBENGINE_DISABLE_SANDBOX: 1
+slots:
+  session-dbus-interface:
+    interface: dbus
+    name: org.kde.k3b
+    bus: session
+parts:
+  libkcddb:
+    source: https://invent.kde.org/multimedia/libkcddb.git
+    source-branch: master
+    build-snaps:
+      - kde-qt6-core24-sdk/latest/beta
+      - kf6-core24-sdk/latest/beta
+    build-packages:
+      - rsync
+      - libpopt0
+    plugin: cmake
+    cmake-parameters:
+      - -DCMAKE_INSTALL_PREFIX=/usr
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DQT_MAJOR_VERSION=6
+      - -DBUILD_WITH_QT6=ON
+      - -DBUILD_TESTING=OFF
+    override-build: |
+      craftctl default
+      rsync -a --ignore-existing $CRAFT_PART_INSTALL/ /
+  k3b:
+    after:
+      - libkcddb
+    parse-info:
+      - usr/share/metainfo/org.kde.k3b.appdata.xml
+    plugin: cmake
+    build-snaps:
+      - kde-qt6-core24-sdk/latest/beta
+      - kf6-core24-sdk/latest/beta
+    build-packages:
+      - libxml2-dev
+      - gettext
+      - doxygen
+      - graphviz
+      - libxml2-utils
+      - docbook-xml
+      - docbook-xsl
+      - libglx-dev
+      - libgl-dev
+      - libglvnd-dev
+      - libavformat-dev
+      - libdvdread-dev
+      - libflac++-dev
+      - libflac-dev
+      - libfuzzer-14-dev
+      - libmad0-dev
+      - libmp3lame-dev
+      - libmpcdec-dev
+      - libmusicbrainz5-dev
+      - libpulse-dev
+      - libsamplerate0-dev
+      - libsndfile1-dev
+      - libtag1-dev
+      - libvorbis-dev
+    stage-packages:
+      - cdparanoia
+      - cdrdao
+      - cdrskin
+      - dvd+rw-tools
+      - genisoimage
+      - growisofs
+      - libavformat60
+      - libdvdread8t64
+      - libflac++10
+      - libneon27t64-gnutls
+      - libmusicbrainz5cc2v5
+      - libpulse0
+      - normalize-audio
+      - sox
+      - udisks2
+      - vcdimager
+      - wodim
+    source: .
+    source-type: local
+    cmake-parameters:
+      - -DCMAKE_INSTALL_PREFIX=/usr
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DQT_MAJOR_VERSION=6
+      - -DBUILD_WITH_QT6=ON
+      - -DBUILD_TESTING=OFF
+    build-environment:
+      - DICPATH: "$SNAP/usr/share/hunspell"
+    prime:
+      - -usr/lib/*/cmake/*
+      - -usr/include/*
+      - -usr/share/ECM/*
+      - -usr/share/man/*
+      - -usr/bin/X11
+      - -usr/lib/gcc/$CRAFT_ARCH_TRIPLET_BUILD_FOR/6.0.0
+      - -usr/lib/aspell/*
+      - -usr/share/lintian
+  gpu-2404:
+    after: [k3b]
+    source: https://github.com/canonical/gpu-snap.git
+    plugin: dump
+    override-prime: |
+      craftctl default
+      ${CRAFT_PART_SRC}/bin/gpu-2404-cleanup mesa-2404
+    prime:
+      - bin/gpu-2404-wrapper
+  cleanup:
+    after:
+      - k3b
+    plugin: nil
+    build-snaps:
+      - core24
+      - kf6-core24
+    override-prime: |
+      set -eux
+      for snap in "core24" "kf6-core24"; do
+          cd "/snap/$snap/current" && find . -type f,l -exec rm -rf "${CRAFT_PRIME}/{}" \;
+      done
